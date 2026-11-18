@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# TypeScript Build Outputs
+dist/
+*.tsbuildinfo
+
+# Binary & Packaging Outputs
+dist-bin/
+
+# StudioBridge runtime & cache
+.studiobridge/
+*.conflict-*.luau
+
+# Test workspaces & logs
+test-workspace/
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
