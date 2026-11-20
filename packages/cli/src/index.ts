@@ -133,40 +133,40 @@ program
       console.log(pc.green(`✔ Executable already at: ${targetExe}`));
     }
 
-    // Add to User PATH via PowerShell
+    // Add to User PATH via PowerShell using base64 encoding to prevent quoting issues
     try {
-      const psCommand = `
-        $target = "${installDir}";
-        $userPath = [Environment]::GetEnvironmentVariable("Path", "User");
-        if ($userPath -split ';' -notcontains $target) {
-            [Environment]::SetEnvironmentVariable("Path", "$userPath;$target", "User");
-            Write-Output "ADDED";
-        } else {
-            Write-Output "EXISTS";
-        }
-      `.replace(/\r?\n\s*/g, ' ');
-
-      const { stdout } = await execAsync(`powershell -NoProfile -Command "${psCommand}"`);
-      if (stdout.includes('ADDED')) {
+      const psScript = `
+        $target = '${installDir.replace(/'/g, "''")}';
+        $userPath = [Environment]::GetEnvironmentVariable('Path', 'User');
+        if (-not $userPath) { $userPath = ''; }
+        $parts = $userPath -split ';' | Where-Object { $_ -and $_ -ne $target };
+        $newPath = ($parts + $target) -join ';';
+        [Environment]::SetEnvironmentVariable('Path', $newPath, 'User');
+        Write-Output 'UPDATED';
+      `;
+      const base64Script = Buffer.from(psScript, 'utf16le').toString('base64');
+      const { stdout } = await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${base64Script}`);
+      if (stdout.includes('UPDATED')) {
         console.log(pc.green(`✔ Added to user PATH: ${installDir}`));
       } else {
-        console.log(pc.green(`✔ PATH already contains: ${installDir}`));
+        console.log(pc.green(`✔ PATH already configured: ${installDir}`));
       }
     } catch (err: any) {
       console.warn(pc.yellow(`⚠️ Failed to update PATH automatically: ${err.message}`));
     }
 
-    // Install Roblox Studio Plugin if possible
+    // Install Roblox Studio Plugin if possible, or print Creator Store link
     const robloxPluginsDir = path.join(localAppData, 'Roblox', 'Plugins');
+    let pluginInstalled = false;
     try {
       await fs.mkdir(robloxPluginsDir, { recursive: true });
       const pluginTarget = path.join(robloxPluginsDir, 'StudioBridge.server.luau');
       
-      // Look for plugin source in relative path or bundled
       const candidates = [
         path.join(path.dirname(currentExe), 'StudioBridge.server.luau'),
         path.join(path.dirname(currentExe), 'plugin', 'StudioBridge.server.luau'),
-        path.join(path.dirname(currentExe), '..', 'plugin', 'StudioBridge.server.luau')
+        path.join(path.dirname(currentExe), '..', 'plugin', 'StudioBridge.server.luau'),
+        path.join(process.cwd(), 'plugin', 'StudioBridge.server.luau')
       ];
 
       for (const cand of candidates) {
@@ -174,6 +174,7 @@ program
           await fs.access(cand);
           await fs.copyFile(cand, pluginTarget);
           console.log(pc.green(`✔ Installed Roblox Studio plugin to: ${pluginTarget}`));
+          pluginInstalled = true;
           break;
         } catch {
           // Continue searching
@@ -181,6 +182,11 @@ program
       }
     } catch {
       // Ignore if roblox directory is not accessible
+    }
+
+    if (!pluginInstalled) {
+      console.log(pc.blue(`ℹ Roblox Studio Plugin (Creator Store):`));
+      console.log(pc.cyan(`  https://create.roblox.com/store/asset/104187612371514`));
     }
 
     console.log(pc.bold(pc.green('\n🎉 StudioBridge has been successfully installed!')));

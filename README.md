@@ -28,6 +28,13 @@
 
 ---
 
+## 🔌 Roblox Studio プラグイン
+
+Roblox Creator Store からワンクリックで Studio に追加できます：
+👉 **[StudioBridge - Roblox Creator Store](https://create.roblox.com/store/asset/104187612371514)**
+
+---
+
 ## 📁 ディレクトリ構成
 
 ```text
